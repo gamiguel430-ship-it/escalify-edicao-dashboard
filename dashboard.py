@@ -4,9 +4,9 @@ import pandas as pd
 import re
 from datetime import datetime
 
-# --- CONFIGURAÇÕES ---
-API_KEY = '45fde58da77c8bd79e137b1d4fcaa484'
-TOKEN = 'ATTA2b44a9fa2bba377ce07372c52dd85f26ee5e9a9ebd4e10f00ceea8556ec6837e3BDF7988'
+# --- CONFIGURAÇÕES SEGURAS (Pegando das "Gavetas Escondidas" do Streamlit) ---
+API_KEY = st.secrets["TRELLO_KEY"]
+TOKEN = st.secrets["TRELLO_TOKEN"]
 LISTA_ID = '67e4262e8b3b917efd0b6ae1'
 
 st.set_page_config(page_title="Escalify Performance", layout="wide", page_icon="🎬")
@@ -43,13 +43,10 @@ if data:
         texto_busca = nome_card.lower()
         membros = [m['fullName'].lower() for m in card.get('members', [])]
         
-        # Lógica de Quantidade (Pega o número antes de "Anúncio")
         match_anuncio = re.search(r'(\d+)\s*[Aa]n[uú]ncio', nome_card)
         quantidade = int(match_anuncio.group(1)) if match_anuncio else 1
             
         editor = "Outros"
-        
-        # BUSCA REFORÇADA PARA SUELEN (Procura em qualquer parte do nome ou título)
         if any("gabriel" in m for m in membros) or "gabriel" in texto_busca:
             editor = "Gabriel Miguel"
         elif any("suelen" in m or "suellen" in m for m in membros) or "suelen" in texto_busca or "suellen" in texto_busca:
@@ -70,22 +67,18 @@ if data:
     if not df.empty:
         st.title(f"🎬 Performance Escalify - {mes_selecionado}")
         c1, c2, c3 = st.columns(3)
-        
-        total_vids = df['Qtd'].sum()
         resumo_editor = df.groupby('Editor')['Qtd'].sum()
-        melhor_editor = resumo_editor.idxmax()
         
-        c1.metric("📦 Total de Entregas", f"{total_vids} vídeos")
-        c2.metric("🏆 Líder do Mês", melhor_editor)
+        c1.metric("📦 Total de Entregas", f"{df['Qtd'].sum()} vídeos")
+        c2.metric("🏆 Líder do Mês", resumo_editor.idxmax())
         c3.metric("📅 Mês Referência", mes_selecionado)
         
         st.markdown("---")
         st.subheader("📊 Volume de Produção por Editor")
         st.bar_chart(resumo_editor, color="#1E3A8A")
-        
         st.subheader("📋 Detalhamento")
         st.dataframe(df, use_container_width=True, hide_index=True)
     else:
-        st.warning(f"Nenhuma entrega encontrada para {mes_selecionado}. Verifique se os cards estão no mês correto!")
+        st.warning(f"Nenhuma entrega encontrada para {mes_selecionado}.")
 else:
     st.error("Erro ao conectar com o Trello.")
