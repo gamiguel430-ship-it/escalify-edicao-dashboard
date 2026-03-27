@@ -85,7 +85,7 @@ data_info = buscar_cards(LISTA_INFOPRODUTOS_ID)
 mapa_meses = {"Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4}
 registos = []
 
-# Motor de Leitura Inteligente
+# Motor de Leitura Inteligente (AGORA COM MICRO LEADS)
 def processar_lista(dados_trello, tipo_trello, lista_final):
     for card in dados_trello:
         dt = datetime.strptime(card['dateLastActivity'], '%Y-%m-%dT%H:%M:%S.%fZ')
@@ -95,7 +95,7 @@ def processar_lista(dados_trello, tipo_trello, lista_final):
         texto = nome.lower()
         membros = [m['fullName'].lower() for m in card.get('members', [])]
         
-        # 1. Identificar Editor (Nomes ou Siglas .ss, .gm, .hl)
+        # 1. Identificar Editor
         editor = "Outros"
         if any("suel" in m for m in membros) or "suel" in texto or ".ss" in texto or ".suh" in texto:
             editor = "Suellen Santos"
@@ -112,14 +112,23 @@ def processar_lista(dados_trello, tipo_trello, lista_final):
                 qtd = int(match.group(1)) if match else 1
             
             elif tipo_trello == "Infoprodutos":
-                # Lê o formato B11-B15 e calcula a diferença
+                # Regra A: Formato Range (Ex: B11-B15)
                 match_range = re.search(r'[A-Za-z]*\s*(\d+)\s*-\s*[A-Za-z]*\s*(\d+)', nome)
+                # Regra B: Formato ML com número na frente (Ex: 3 ML)
+                match_ml_qtd = re.search(r'(\d+)\s*ml', texto)
+                # Regra C: Formato ML unitário (Ex: ML2 ou ML)
+                match_ml_single = re.search(r'ml\d*', texto)
+
                 if match_range:
                     inicio = int(match_range.group(1))
                     fim = int(match_range.group(2))
                     qtd = (abs(fim - inicio) + 1) * 2 # Multiplica por 2 (Hooks)
+                elif match_ml_qtd:
+                    qtd = int(match_ml_qtd.group(1)) # Pega a quantidade exata (ex: 3)
+                elif match_ml_single:
+                    qtd = 1 # Considera apenas 1 vídeo
                 else:
-                    qtd = 2 # Se for um vídeo só, conta 2 pelos hooks
+                    qtd = 2 # Padrão: Se for um vídeo normal solto, conta 2 pelos hooks
 
             lista_final.append({"Editor": editor, "Qtd": qtd, "Segmento": tipo_trello, "Projeto": nome})
 
@@ -132,7 +141,7 @@ df = pd.DataFrame(registos)
 if not df.empty:
     st.markdown(f"<h1 class='tech-header'>PERFORMANCE HUB // {mes_selecionado}</h1>", unsafe_allow_html=True)
     
-    # --- BANNER DO MVP GERAL (SOMA TUDO) ---
+    # --- BANNER DO MVP GERAL ---
     resumo_total = df.groupby('Editor')['Qtd'].sum()
     st.markdown(f"""
     <div class="mvp-banner">
