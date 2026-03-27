@@ -145,4 +145,46 @@ if not df.empty:
     st.markdown(f"""
     <div class="mvp-banner">
         <div class="mvp-title">👑 MVP DA AGÊNCIA 👑</div>
-        <div class="mvp-name">{
+        <div class="mvp-name">{resumo_total.idxmax()}</div>
+        <div style="color:white; margin-top:5px; font-family: 'JetBrains Mono', monospace;">Liderando com {int(resumo_total.max())} vídeos entregues!</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- PROGRESS BAR (A META) ---
+    total_geral = df['Qtd'].sum()
+    progresso_pct = min(int((total_geral / META_MENSAL) * 100), 100) # Limita a 100% no visual
+    
+    st.markdown(f"""
+    <div style="margin-top: 10px; margin-bottom: 35px; background: rgba(16, 20, 28, 0.5); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;">
+            <span style="font-family: 'JetBrains Mono', monospace; color: #ff007f; font-weight: 800; font-size: 18px; letter-spacing: 1px;">🎯 OBJETIVO: {META_MENSAL} VÍDEOS</span>
+            <span style="font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-size: 16px; font-weight: bold;">{total_geral} / {META_MENSAL} ({progresso_pct}%)</span>
+        </div>
+        <div style="background-color: #1f2937; border-radius: 20px; width: 100%; height: 24px; border: 1px solid #374151; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
+            <div style="background: linear-gradient(90deg, #ff007f 0%, #00d4ff 100%); width: {progresso_pct}%; height: 100%; border-radius: 20px; box-shadow: 0 0 15px rgba(0, 212, 255, 0.6); transition: width 1.5s ease-in-out;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- MÉTRICAS ---
+    df_serv = df[df['Segmento'] == "Serviços/Criativos"]
+    df_info = df[df['Segmento'] == "Infoprodutos"]
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("📦 SERVIÇOS/CRIATIVOS", f"{df_serv['Qtd'].sum()} vídeos")
+    c2.metric("🎥 INFOPRODUTOS", f"{df_info['Qtd'].sum()} vídeos")
+    c3.metric("🚀 TOTAL GERAL", f"{total_geral} vídeos")
+
+    st.markdown("---")
+
+    # --- GRÁFICOS ---
+    st.subheader("📊 Ranking Geral Segmentado")
+    df_grafico = df.groupby(['Editor', 'Segmento'])['Qtd'].sum().unstack().fillna(0)
+    
+    if not df_grafico.empty:
+        st.bar_chart(df_grafico, horizontal=True)
+            
+    st.subheader("📋 Log Completo de Operações")
+    st.dataframe(df[["Editor", "Segmento", "Qtd", "Projeto"]], use_container_width=True, hide_index=True)
+else:
+    st.info(f"Aguardando dados de {mes_selecionado} ou verifique os cartões no Trello...")
