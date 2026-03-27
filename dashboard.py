@@ -11,7 +11,7 @@ TOKEN = st.secrets["TRELLO_TOKEN"]
 
 # IDs DAS LISTAS NO TRELLO
 LISTA_PERFORMANCE_ID = '67e4262e8b3b917efd0b6ae1'
-LISTA_INFOPRODUTOS_ID = 'idList":"69af2a85b62772bd7d29463e' # <--- COLE O NOVO ID AQUI
+LISTA_INFOPRODUTOS_ID = 'idList":"69af2a85b62772bd7d29463e' # <--- NÃO ESQUEÇA DE COLOCAR O ID AQUI
 
 st.set_page_config(page_title="Escalify Hub", layout="wide", page_icon="⚡")
 
@@ -55,7 +55,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR ---
+# --- SIDEBAR (LOGO AUTOMÁTICA) ---
 with st.sidebar:
     if os.path.exists("logo.jpeg"):
         st.image("logo.jpeg", use_container_width=True)
@@ -73,31 +73,53 @@ def buscar_cards(id_lista):
     res = requests.get(url)
     return res.json() if res.status_code == 200 else []
 
-# --- PROCESSAMENTO DOS DOIS QUADROS ---
 data_perf = buscar_cards(LISTA_PERFORMANCE_ID)
 data_info = buscar_cards(LISTA_INFOPRODUTOS_ID)
-
 mapa_meses = {"Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4}
+
 registos = []
 
+# --- MOTOR DE LEITURA BILÍNGUE ---
 def processar_lista(dados_trello, tipo_trello):
     for card in dados_trello:
         dt = datetime.strptime(card['dateLastActivity'], '%Y-%m-%dT%H:%M:%S.%fZ')
         if dt.month != mapa_meses[mes_selecionado]: continue
         
         nome = card['name']
+        texto = nome.lower()
         membros = [m['fullName'].lower() for m in card.get('members', [])]
         
+        # 1. Descobrir o Editor (Lê nomes marcados e siglas .gm, .ss, .hl)
         editor = "Outros"
-        if any("suel" in m for m in membros) or "suel" in nome.lower(): editor = "Suellen Santos"
-        elif any("gabriel" in m for m in membros) or "gabriel" in nome.lower(): editor = "Gabriel Miguel"
-        elif any("heitor" in m for m in membros) or "heitor" in nome.lower(): editor = "Heitor Leão"
+        if any("suel" in m for m in membros) or "suel" in texto or ".ss" in texto or ".suh" in texto:
+            editor = "Suellen Santos"
+        elif any("gabriel" in m for m in membros) or "gabriel" in texto or ".gm" in texto:
+            editor = "Gabriel Miguel"
+        elif any("heitor" in m for m in membros) or "heitor" in texto or ".hl" in texto:
+            editor = "Heitor Leão"
             
         if editor != "Outros":
-            match = re.search(r'(\d+)\s*[Aa]n[uú]ncio', nome)
-            qtd = int(match.group(1)) if match else 1
+            # 2. Lógica de Contagem
+            if tipo_trello == "Performance":
+                # Procura a palavra "anuncio"
+                match = re.search(r'(\d+)\s*[Aa]n[uú]ncio', nome)
+                qtd = int(match.group(1)) if match else 1
+            
+            elif tipo_trello == "Infoprodutos":
+                # Procura o formato B11-B15 ou V1-V5
+                match_range = re.search(r'[A-Za-z]+(\d+)\s*-\s*[A-Za-z]+(\d+)', nome)
+                if match_range:
+                    inicio = int(match_range.group(1))
+                    fim = int(match_range.group(2))
+                    qtd_base = abs(fim - inicio) + 1
+                    qtd = qtd_base * 2 # Multiplica pelos 2 Hooks
+                else:
+                    # Se for só um vídeo listado (ex: "B16 AMS FC.GM"), conta 2 (devido aos 2 hooks)
+                    qtd = 2 
+
             registos.append({"Editor": editor, "Qtd": qtd, "Segmento": tipo_trello, "Projeto": nome})
 
+# Roda o motor para as duas listas
 if data_perf: processar_lista(data_perf, "Performance")
 if data_info: processar_lista(data_info, "Infoprodutos")
 
@@ -106,37 +128,38 @@ df = pd.DataFrame(registos)
 if not df.empty:
     st.markdown(f"<h1 class='tech-header'>PERFORMANCE HUB // {mes_selecionado}</h1>", unsafe_allow_html=True)
     
-    # --- DESTAQUE MVP (Soma Geral) ---
+    # --- DESTAQUE MVP ---
     resumo_total = df.groupby('Editor')['Qtd'].sum()
     st.markdown(f"""
     <div class="mvp-banner">
         <div class="mvp-title">👑 MVP DA AGÊNCIA 👑</div>
         <div class="mvp-name">{resumo_total.idxmax()}</div>
-        <div style="color:white; margin-top:5px;">Com {resumo_total.max()} entregas no total!</div>
+        <div style="color:white; margin-top:5px; font-family: 'JetBrains Mono', monospace;">Entregou {resumo_total.max()} edições neste mês!</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- MÉTRICAS ---
     df_perf = df[df['Segmento'] == "Performance"]
     df_info = df[df['Segmento'] == "Infoprodutos"]
 
+    # --- MÉTRICAS ---
     c1, c2, c3 = st.columns(3)
     c1.metric("📦 PERFORMANCE", f"{df_perf['Qtd'].sum()} vids")
     c2.metric("🎥 INFOPRODUTOS", f"{df_info['Qtd'].sum()} vids")
     c3.metric("🚀 TOTAL GERAL", f"{df['Qtd'].sum()} vids")
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- GRÁFICO ÚNICO SEGMENTADO (O Pulo do Gato) ---
-    st.subheader("📊 Ranking Geral de Entregas (Por Segmento)")
+    # --- GRÁFICO EMPILHADO (O SEGREDO DO LAYOUT) ---
+    st.subheader("📊 Ranking Geral de Entregas (Segmentado)")
     
-    # Prepara os dados para o gráfico empilhado
+    # Prepara os dados para empilhar as cores na mesma barra
     df_grafico = df.groupby(['Editor', 'Segmento'])['Qtd'].sum().unstack().fillna(0)
     
-    # Plota o gráfico com as duas cores juntas na mesma barra
-    st.bar_chart(df_grafico, horizontal=True)
+    # Se o DataFrame tiver dados, plota o gráfico
+    if not df_grafico.empty:
+        st.bar_chart(df_grafico, horizontal=True)
             
     st.subheader("📋 Log Completo de Operações")
     st.dataframe(df[["Editor", "Segmento", "Qtd", "Projeto"]], use_container_width=True, hide_index=True)
 else:
-    st.info(f"Aguardando dados de {mes_selecionado}...")
+    st.info(f"Aguardando dados ou verifique os IDs das listas...")
