@@ -4,6 +4,7 @@ import pandas as pd
 import re
 from datetime import datetime
 import os
+import streamlit.components.v1 as components
 
 # --- CONFIGURAÇÕES ---
 API_KEY = st.secrets["TRELLO_KEY"]
@@ -17,6 +18,20 @@ LISTA_INFOPRODUTOS_ID = '69af2a85b62772bd7d29463e'
 META_MENSAL = 1000 
 
 st.set_page_config(page_title="Escalify Hub", layout="wide", page_icon="⚡")
+
+# --- AUTO-REFRESH (ATUALIZAÇÃO AUTOMÁTICA) ---
+# Atualiza a página automaticamente a cada 5 minutos (300000 milissegundos)
+# Se quiser mudar o tempo, basta alterar o número 300000 abaixo.
+components.html(
+    """
+    <script>
+    setTimeout(function(){
+        window.parent.location.reload();
+    }, 300000);
+    </script>
+    """,
+    height=0
+)
 
 # --- CSS PREMIUM / CYBERPUNK (PALETA ESCALIFY) ---
 st.markdown("""
@@ -148,7 +163,7 @@ if not df.empty:
     </div>
     """, unsafe_allow_html=True)
 
-    # --- PROGRESS BAR (CORES DA MARCA ESCALIFY) ---
+    # --- PROGRESS BAR ---
     total_geral = df['Qtd'].sum()
     progresso_pct = min(int((total_geral / META_MENSAL) * 100), 100)
     
@@ -180,7 +195,6 @@ if not df.empty:
     df_grafico = df.groupby(['Editor', 'Segmento'])['Qtd'].sum().unstack().fillna(0)
     
     if not df_grafico.empty:
-        # Usando a paleta de cores nativa e limpa do Streamlit Dark Theme
         st.bar_chart(df_grafico, horizontal=True)
             
     st.subheader("📋 Log Completo de Operações")
