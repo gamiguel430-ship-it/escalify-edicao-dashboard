@@ -20,7 +20,7 @@ st.set_page_config(page_title="Performance Edição — Escalify", layout="wide"
 components.html("<script>setTimeout(()=>window.parent.location.reload(),300000)</script>", height=0)
 
 # ══════════════════════════════════════════════
-# CSS BASE
+# CSS BASE — apenas o que o Streamlit não sobrescreve
 # ══════════════════════════════════════════════
 st.markdown("""
 <style>
@@ -46,44 +46,32 @@ html, body,
     padding-left: 2rem !important;
     padding-right: 2rem !important;
 }
-h2, h3,
-[data-testid="stHeading"] h2,
-[data-testid="stHeading"] h3 {
-    font-family: 'Inter', sans-serif !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    color: rgba(255,255,255,0.28) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.09em !important;
-    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-    padding-bottom: 8px !important;
-    margin-top: 24px !important;
-    margin-bottom: 12px !important;
-}
 hr { border-color: rgba(255,255,255,0.06) !important; margin: 6px 0 !important; }
-[data-testid="stVegaLiteChart"] {
-    background: #16161f !important;
-    border: 1px solid rgba(255,255,255,0.07) !important;
-    border-radius: 12px !important;
-    padding: 16px !important;
-}
 [data-testid="stSelectbox"] > div > div {
     background: rgba(255,255,255,0.04) !important;
     border: 1px solid rgba(0,212,255,0.15) !important;
     border-radius: 8px !important;
     color: #d4d8e1 !important;
 }
-[data-testid="stAlert"] {
-    background: rgba(0,212,255,0.05) !important;
-    border: 1px solid rgba(0,212,255,0.15) !important;
-    border-radius: 10px !important;
-    color: rgba(0,212,255,0.7) !important;
-}
-/* remove iframe border */
 iframe { border: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
+# ══════════════════════════════════════════════
+# CONSTANTES
+# ══════════════════════════════════════════════
+FONT = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');"
+RST  = "* { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }"
+
+COR_INFOPRODUTOS = "#6d5dff"   # roxo
+COR_SERVICOS     = "#00d4ff"   # ciano Escalify
+COR_MVP          = "#f59e0b"   # âmbar
+
+CORES_EDITOR = {
+    "Suellen Santos": "#f59e0b",
+    "Gabriel Miguel": "#5dcaa5",
+    "Heitor Leão":    "#60a5fa",
+}
 
 # ══════════════════════════════════════════════
 # SIDEBAR
@@ -96,9 +84,11 @@ with st.sidebar:
     else:
         st.markdown("""
         <div style="text-align:center;padding:16px 0 8px">
-            <div style="width:52px;height:52px;background:linear-gradient(135deg,#001f3f,#00d4ff);
-                        border-radius:12px;display:flex;align-items:center;justify-content:center;
-                        font-size:24px;font-weight:700;color:#fff;margin:0 auto;
+            <div style="width:52px;height:52px;
+                        background:linear-gradient(135deg,#001f3f,#00d4ff);
+                        border-radius:12px;display:flex;align-items:center;
+                        justify-content:center;font-size:24px;font-weight:700;
+                        color:#fff;margin:0 auto;
                         font-family:'JetBrains Mono',monospace;">S</div>
         </div>
         """, unsafe_allow_html=True)
@@ -121,9 +111,8 @@ with st.sidebar:
         index=2, label_visibility="collapsed"
     )
 
-
 # ══════════════════════════════════════════════
-# DADOS TRELLO
+# DADOS
 # ══════════════════════════════════════════════
 def buscar_cards(id_lista):
     url = (f"https://api.trello.com/1/lists/{id_lista}/cards"
@@ -184,21 +173,12 @@ if data_info: processar_lista(data_info, "Infoprodutos", registos)
 
 df = pd.DataFrame(registos)
 
-
 # ══════════════════════════════════════════════
 # HELPERS
 # ══════════════════════════════════════════════
-FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');"
-BASE_RESET  = "* { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }"
-
-def cor_editor(nome, mvp):
-    if nome == mvp:
-        return "#f59e0b"
-    return {"Suellen Santos":"#a78bfa","Gabriel Miguel":"#5dcaa5","Heitor Leão":"#60a5fa"}.get(nome,"#8a9ab5")
-
 def iniciais(nome):
     p = nome.split()
-    return (p[0][0]+p[-1][0]).upper() if len(p)>=2 else nome[:2].upper()
+    return (p[0][0]+p[-1][0]).upper() if len(p) >= 2 else nome[:2].upper()
 
 
 # ══════════════════════════════════════════════
@@ -206,18 +186,19 @@ def iniciais(nome):
 # ══════════════════════════════════════════════
 if not df.empty:
 
+    # ── métricas base ──
     resumo      = df.groupby('Editor')['Qtd'].sum().sort_values(ascending=False)
     mvp_nome    = resumo.idxmax()
     mvp_qtd     = int(resumo.max())
     total_geral = int(df['Qtd'].sum())
     pct         = min(round((total_geral / META_MENSAL) * 100), 100)
-    total_serv  = int(df[df['Segmento']=="Serviços/Criativos"]['Qtd'].sum())
-    total_info  = int(df[df['Segmento']=="Infoprodutos"]['Qtd'].sum())
+    total_serv  = int(df[df['Segmento'] == "Serviços/Criativos"]['Qtd'].sum())
+    total_info  = int(df[df['Segmento'] == "Infoprodutos"]['Qtd'].sum())
     segundo     = int(resumo.iloc[1]) if len(resumo) > 1 else 0
     vantagem    = f"+{round(((mvp_qtd-segundo)/segundo)*100)}% vs 2º" if segundo > 0 else "—"
 
     # ── CABEÇALHO ──────────────────────────────
-    components.html(f"""<style>{FONT_IMPORT}{BASE_RESET}</style>
+    components.html(f"""<style>{FONT}{RST}</style>
     <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px;">
         <span style="font-size:20px;font-weight:600;color:#f0f4ff;letter-spacing:-0.02em;">
             Performance Edição — Escalify</span>
@@ -230,7 +211,7 @@ if not df.empty:
     """, height=50)
 
     # ── MVP BANNER ─────────────────────────────
-    components.html(f"""<style>{FONT_IMPORT}{BASE_RESET}
+    components.html(f"""<style>{FONT}{RST}
     .mvp{{display:flex;align-items:stretch;background:#16161f;
           border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;}}
     .bar{{width:5px;flex-shrink:0;background:linear-gradient(180deg,#f59e0b,#d97706);}}
@@ -260,8 +241,7 @@ if not df.empty:
         <div class="crown">👑</div>
         <div class="info">
           <div class="eyebrow">MVP da Agência
-            <span class="pill">{mes_selecionado} 2025</span>
-          </div>
+            <span class="pill">{mes_selecionado} 2025</span></div>
           <div class="mname">{mvp_nome}</div>
           <div class="msub">Liderando com <strong>{mvp_qtd} criativos</strong> entregues este mês</div>
         </div>
@@ -269,23 +249,20 @@ if not df.empty:
         <div class="stats">
           <div class="stat">
             <div class="sval" style="color:#5dcaa5">{mvp_qtd}</div>
-            <div class="slbl">Entregas</div>
-          </div>
+            <div class="slbl">Entregas</div></div>
           <div class="stat">
             <div class="sval" style="color:#a78bfa">#1</div>
-            <div class="slbl">Ranking</div>
-          </div>
+            <div class="slbl">Ranking</div></div>
           <div class="stat">
             <div class="sval" style="color:#f59e0b">{vantagem}</div>
-            <div class="slbl">Vantagem</div>
-          </div>
+            <div class="slbl">Vantagem</div></div>
         </div>
       </div>
     </div>
     """, height=108)
 
     # ── META BAR ───────────────────────────────
-    components.html(f"""<style>{FONT_IMPORT}{BASE_RESET}
+    components.html(f"""<style>{FONT}{RST}
     .meta{{display:flex;align-items:center;gap:14px;background:#16161f;
            border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:13px 20px;}}
     .ml{{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
@@ -321,23 +298,147 @@ if not df.empty:
       <div style="font-size:11px;color:rgba(255,255,255,0.25);">criativos</div>
     </div>""" for l, v, c, g in kpis)
 
-    components.html(f"""<style>{FONT_IMPORT}{BASE_RESET}
+    components.html(f"""<style>{FONT}{RST}
     .grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}}
     </style>
     <div class="grid">{kpi_cards}</div>
-    """, height=110)
+    """, height=112)
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── GRÁFICO ────────────────────────────────
-    st.subheader("Ranking Geral Segmentado")
-    df_grafico = df.groupby(['Editor','Segmento'])['Qtd'].sum().unstack().fillna(0)
-    if not df_grafico.empty:
-        st.bar_chart(df_grafico, horizontal=True, color=["#00d4ff","#001f3f"])
+    # ══════════════════════════════════════════
+    # GRÁFICOS — barras + donut lado a lado
+    # ══════════════════════════════════════════
 
-    # ── TABELA HTML ────────────────────────────
-    st.subheader("Log Completo de Operações")
+    # dados por editor e segmento
+    por_editor = df.groupby(['Editor','Segmento'])['Qtd'].sum().unstack(fill_value=0)
+    editores   = list(por_editor.index)
+    max_total  = max(
+        por_editor.get("Infoprodutos", pd.Series(dtype=int)).add(
+        por_editor.get("Serviços/Criativos", pd.Series(dtype=int)), fill_value=0)
+    )
 
+    # barras
+    barras_html = ""
+    for ed in editores:
+        q_info = int(por_editor.get("Infoprodutos", pd.Series(dtype=int)).get(ed, 0))
+        q_serv = int(por_editor.get("Serviços/Criativos", pd.Series(dtype=int)).get(ed, 0))
+        total_ed = q_info + q_serv
+        pct_info = round((q_info / max_total) * 100) if max_total > 0 else 0
+        pct_serv = round((q_serv / max_total) * 100) if max_total > 0 else 0
+        c_ed     = COR_EDITOR = CORES_EDITOR.get(ed, "#8a9ab5")
+        is_mvp   = ed == mvp_nome
+        name_style = f"color:{c_ed};font-weight:500;" if is_mvp else "color:rgba(255,255,255,0.45);"
+
+        barras_html += f"""
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:11.5px;{name_style}width:110px;flex-shrink:0;text-align:right;
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{ed.split()[0]}</div>
+          <div style="flex:1;height:8px;background:rgba(255,255,255,0.05);
+                      border-radius:4px;overflow:hidden;display:flex;gap:2px;">
+            <div style="height:100%;width:{pct_info}%;background:{COR_INFOPRODUTOS};border-radius:4px 0 0 4px;flex-shrink:0;"></div>
+            <div style="height:100%;width:{pct_serv}%;background:{COR_SERVICOS};border-radius:0 4px 4px 0;flex-shrink:0;"></div>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.3);
+                      width:32px;text-align:right;flex-shrink:0;">{total_ed}</div>
+        </div>"""
+
+    # donut — circunferência = 2π × 42 ≈ 264
+    circ    = 264
+    pct_serv_d  = (total_serv / total_geral) if total_geral > 0 else 0
+    pct_info_d  = (total_info / total_geral) if total_geral > 0 else 0
+    dash_serv   = round(pct_serv_d * circ, 1)
+    dash_info   = round(pct_info_d * circ, 1)
+    # ângulo de início do 2º arco (graus), convertido: offset = circunf - dash_1
+    offset_info = round(circ - dash_serv, 1)
+
+    donut_items = f"""
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
+      <div style="display:flex;align-items:center;gap:7px;color:rgba(255,255,255,0.5);">
+        <div style="width:7px;height:7px;border-radius:50%;background:{COR_SERVICOS};flex-shrink:0;"></div>
+        Serviços
+      </div>
+      <div style="color:rgba(255,255,255,0.7);font-weight:500;">{round(pct_serv_d*100)}%</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
+      <div style="display:flex;align-items:center;gap:7px;color:rgba(255,255,255,0.5);">
+        <div style="width:7px;height:7px;border-radius:50%;background:{COR_INFOPRODUTOS};flex-shrink:0;"></div>
+        Infoprodutos
+      </div>
+      <div style="color:rgba(255,255,255,0.7);font-weight:500;">{round(pct_info_d*100)}%</div>
+    </div>"""
+
+    components.html(f"""<style>{FONT}{RST}
+    .chart-row{{display:grid;grid-template-columns:1fr 240px;gap:12px;}}
+    .card{{background:#16161f;border:1px solid rgba(255,255,255,0.07);
+           border-radius:12px;padding:18px 20px;}}
+    .card-title{{font-size:12.5px;font-weight:600;color:#e2e2e6;margin-bottom:16px;}}
+    .legend{{display:flex;gap:14px;}}
+    .leg{{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(255,255,255,0.35);}}
+    .dot{{width:7px;height:7px;border-radius:50%;flex-shrink:0;}}
+    .bar-chart{{display:flex;flex-direction:column;gap:14px;}}
+    .donut-card{{display:flex;flex-direction:column;align-items:center;gap:14px;}}
+    .donut-title{{font-size:12.5px;font-weight:600;color:#e2e2e6;align-self:flex-start;}}
+    .donut-items{{width:100%;display:flex;flex-direction:column;gap:8px;}}
+    .donut-wrap{{position:relative;width:110px;height:110px;}}
+    .donut-center{{position:absolute;inset:0;display:flex;flex-direction:column;
+                   align-items:center;justify-content:center;}}
+    .d-num{{font-size:20px;font-weight:600;color:#f0f4ff;
+             font-family:'JetBrains Mono',monospace;}}
+    .d-sub{{font-size:10px;color:rgba(255,255,255,0.3);}}
+    </style>
+
+    <div class="chart-row">
+
+      <!-- BARRAS -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span class="card-title" style="margin-bottom:0">Entregas por editor</span>
+          <div class="legend">
+            <div class="leg"><div class="dot" style="background:{COR_INFOPRODUTOS}"></div>Infoprodutos</div>
+            <div class="leg"><div class="dot" style="background:{COR_SERVICOS}"></div>Serviços</div>
+          </div>
+        </div>
+        <div class="bar-chart">{barras_html}</div>
+      </div>
+
+      <!-- DONUT -->
+      <div class="card donut-card">
+        <span class="donut-title">Segmentos</span>
+
+        <div class="donut-wrap">
+          <svg viewBox="0 0 110 110" width="110" height="110">
+            <!-- trilha -->
+            <circle cx="55" cy="55" r="42" fill="none"
+                    stroke="rgba(255,255,255,0.05)" stroke-width="14"/>
+            <!-- serviços -->
+            <circle cx="55" cy="55" r="42" fill="none"
+                    stroke="{COR_SERVICOS}" stroke-width="14"
+                    stroke-dasharray="{dash_serv} {circ}"
+                    stroke-linecap="round"
+                    transform="rotate(-90 55 55)"/>
+            <!-- infoprodutos -->
+            <circle cx="55" cy="55" r="42" fill="none"
+                    stroke="{COR_INFOPRODUTOS}" stroke-width="14"
+                    stroke-dasharray="{dash_info} {circ}"
+                    stroke-linecap="round"
+                    transform="rotate({round(pct_serv_d*360 - 90)} 55 55)"/>
+          </svg>
+          <div class="donut-center">
+            <div class="d-num">{total_geral:,}</div>
+            <div class="d-sub">total</div>
+          </div>
+        </div>
+
+        <div class="donut-items">{donut_items}</div>
+      </div>
+
+    </div>
+    """, height=220)
+
+    # ══════════════════════════════════════════
+    # TABELA HTML
+    # ══════════════════════════════════════════
     seg_pill = {
         "Serviços/Criativos": ("rgba(56,138,221,0.1)",  "#5ba5e8", "rgba(56,138,221,0.18)"),
         "Infoprodutos":        ("rgba(109,93,255,0.1)", "#a78bfa",  "rgba(109,93,255,0.18)"),
@@ -345,13 +446,13 @@ if not df.empty:
 
     linhas = ""
     for _, row in df.iterrows():
-        ed  = row["Editor"]; seg = row["Segmento"]
-        qtd = int(row["Qtd"]); proj = row["Projeto"]
-        c   = cor_editor(ed, mvp_nome)
-        ini = iniciais(ed)
+        ed   = row["Editor"]; seg = row["Segmento"]
+        qtd  = int(row["Qtd"]); proj = row["Projeto"]
+        c    = CORES_EDITOR.get(ed, "#8a9ab5")
+        ini  = iniciais(ed)
         sbg, scol, sbord = seg_pill.get(seg, ("rgba(255,255,255,0.06)","#aaa","transparent"))
-        hl  = "background:rgba(245,158,11,0.03);" if ed == mvp_nome else ""
-        ec  = f"color:{c};" if ed == mvp_nome else "color:rgba(255,255,255,0.7);"
+        hl   = "background:rgba(245,158,11,0.03);" if ed == mvp_nome else ""
+        ec   = f"color:{c};" if ed == mvp_nome else "color:rgba(255,255,255,0.7);"
 
         linhas += f"""
         <tr style="{hl}border-bottom:1px solid rgba(255,255,255,0.04);">
@@ -365,25 +466,27 @@ if not df.empty:
             </div>
           </td>
           <td style="padding:10px 18px;">
-            <span style="display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;
-                         font-size:10px;font-weight:600;
+            <span style="display:inline-flex;align-items:center;padding:2px 9px;
+                         border-radius:20px;font-size:10px;font-weight:600;
                          background:{sbg};color:{scol};border:1px solid {sbord};">{seg}</span>
           </td>
           <td style="padding:10px 18px;">
             <span style="display:inline-flex;align-items:center;justify-content:center;
                          min-width:28px;height:20px;background:rgba(255,255,255,0.06);
-                         border-radius:4px;font-size:11px;color:rgba(255,255,255,0.6);">{qtd}</span>
+                         border-radius:4px;font-size:11px;
+                         color:rgba(255,255,255,0.6);">{qtd}</span>
           </td>
           <td style="padding:10px 18px;max-width:360px;">
             <span style="display:block;color:rgba(255,255,255,0.5);font-size:11.5px;
-                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{proj}</span>
+                         white-space:nowrap;overflow:hidden;
+                         text-overflow:ellipsis;">{proj}</span>
           </td>
         </tr>"""
 
     n   = len(df)
     alt = min(52 + n * 44, 560)
 
-    components.html(f"""<style>{FONT_IMPORT}{BASE_RESET}
+    components.html(f"""<style>{FONT}{RST}
     .wrap{{background:#16161f;border:1px solid rgba(255,255,255,0.07);
            border-radius:12px;overflow:hidden;}}
     .head{{display:flex;align-items:center;justify-content:space-between;
@@ -396,8 +499,8 @@ if not df.empty:
     table{{width:100%;border-collapse:collapse;}}
     thead th{{padding:9px 18px;text-align:left;font-size:10px;font-weight:600;
               color:rgba(0,212,255,0.5);text-transform:uppercase;letter-spacing:0.08em;
-              background:rgba(0,212,255,0.04);border-bottom:1px solid rgba(0,212,255,0.08);
-              white-space:nowrap;}}
+              background:rgba(0,212,255,0.04);
+              border-bottom:1px solid rgba(0,212,255,0.08);white-space:nowrap;}}
     tbody tr:last-child{{border-bottom:none!important;}}
     tbody tr:hover{{background:rgba(255,255,255,0.02)!important;}}
     </style>
@@ -419,10 +522,11 @@ if not df.empty:
 
 # ── ESTADO VAZIO ───────────────────────────────
 else:
-    components.html(f"""<style>{FONT_IMPORT}{BASE_RESET}</style>
+    components.html(f"""<style>{FONT}{RST}</style>
     <div style="text-align:center;padding:60px 20px;">
       <div style="font-size:36px;margin-bottom:14px;">📭</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:15px;color:rgba(0,212,255,0.6);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:15px;
+                  color:rgba(0,212,255,0.6);">
         Aguardando dados de {mes_selecionado}...</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.22);margin-top:8px;">
         Verifique se os cartões no Trello têm a data correta.</div>
