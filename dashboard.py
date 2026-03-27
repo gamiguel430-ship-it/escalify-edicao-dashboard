@@ -3,19 +3,104 @@ import requests
 import pandas as pd
 import re
 from datetime import datetime
-import base64
 
-# --- CONFIGURAÇÕES DO SERVIDOR (Via Secrets) ---
+# --- CONFIGURAÇÕES DO SERVIDOR ---
 API_KEY = st.secrets["TRELLO_KEY"]
 TOKEN = st.secrets["TRELLO_TOKEN"]
 
-# IDs DAS LISTAS (Mude o ID_EDICOES para o da sua nova lista de 'Edições Escalify')
+# IDs DAS LISTAS (Mantenha os seus IDs aqui)
 LISTA_PERFORMANCE_ID = '67e4262e8b3b917efd0b6ae1'
-LISTA_EDICOES_ID = 'COLE_AQUI_O_ID_DA_OUTRA_LISTA' 
+LISTA_EDICOES_ID = '67e4262e8b3b917efd0b6ae1' # Se for a mesma lista, mantenha o ID igual
 
 st.set_page_config(page_title="Escalify Tech Hub", layout="wide", page_icon="⚡")
 
-# --- CONVERSÃO DO LOGO (Seta 'S') PARA BASE64 ---
-# (Gerado internamente a partir da imagem fornecida para visualização robusta)
-encoded_logo = """
-iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAL8lJREFUeNrsXQmU1MSVPa/fO3Z3963A7jDDAjIgg4CAorjALCIGFFwQYRQVAxojiohGRSTiiAgqiogoCIKAyKIgIogI4o4o4oyKAoqIAvL33R37v/6Nqv5m5uvm5f5m5ut5/53X5v2m+3XVq37VX5XfD6SqqqoEESJEiBAhQoQIEf5PCEK5bLw85R//qWpE+L/B7u6I7371wI4vV9f56pU9vrrYVyv76id9db6vNup9E/W+Y/W+Q/W5vN6/05O4ePj60HWh4Wsk5xOfF1+fT8C6iK/L4NfLidX36PskfJ8NfW4Nffyv9fX2+pobPj4X4YpY4B6HwR2qO56nru+t9/O+Oofve+p9D9T77j/f9//5vvvP8/v++N/7f7e9vff39v6+R+T7PrXve9fX9+8w7R06T3vHztPesf5//u4+vXpP8T8+r//6vWofRHi7uCHWh9R7E37e3S9NfU6f8Xb/8MPrG4Yfr355L/vP//m6ofreofX9/H/vX5L59N9/7//H8H69n+B/9L5pGvofGf9/qI6H97Sft3fkvX0Gf9n/Gf//2v+e9bWf/5//z9f3E59P7fvpPekf9D6p//3//n+e4TPh73yU+76+4f1C9YvveqXvGvF+6e4f3H2D7fWrfZ++R7/5v6n9Y//v9R75b31fP6fOf7+f+X/93H8Pr88eE7xGfn49P8P/K/f72GvN+Yf9wX97L7uH5eP96v2D52m//r//X+7bXrvb5//v9hG//r///P+P7/v/rPfL//v/3+P//9//9L8Lp8f99j6P//+9/D6H8f9+T5//rPflf/+P//X+Hk76vA9uT//ff/9f783fU+//x//f//b///w8S//f//S//9//f4Yjv9//X//7/R4n//P//f//H/Y/zD8//53v85/+H+P8Dvv0f4v//v///w/f//S8/f7r//z2P+P95//+E7wvb80r+t//+P94zPv+//u//P+v7W8f3/+v7W73/wPn/h7//L//u/1O+/9/fD7T/v+9/fK/75/f6e//v/ff+/ff4+f/v9/X+n/7v/f+//897xOfXv5P/+9v+/e54Xwff4/5H/ffp/UPrK/+L/z6O9+M4r7y/54T1zP95//m99P55X/1P+8/739OfuY6uXNfo/3m/m+uN9f6G//v/fI7X/+d8nKff836B/3v//v8e53v8Z7y+/8/6evfO477G9f//894v0Xf4/38//++/+h/p93p4/h5e15/Yt57/Xf++94/8L3w/8fP//T6H8//Xv/7//h8Q/9/fX//b/8L/3/9m//X/XffI55Xn6+H1b0e9v9fH8/7+f7zvfvX+/uN8//p39/7e/zC8L3w/8vN5+/68r7+N6+b1/onP718Pz//v4//v///+7/8Pwvf498//+u//X9/7f//9/8t7RPuX+//b/b3O5H/V/e6/+X//+b//n7/nQfX58vP5//e+8774eP/9fr/+f3/v//9+X++fv5v/8b3fA9er+57+v4fv4evqfR5ep/F4/f//x98N///9v+R///+//8D59f97Xv18vL6+N+6L//v/ff99P4D38HXi+/35Pv7OPl6+F+/h6+t9/X4Anf4f4fPz+fr4/Hw+9v8A9Pv4+/n7fWrfb/D//v8/S/R/R7/vW/vevN//v4eX//fX7+H9/nxf//7/H9//18Pr///f4//v6//H5/D/8X14f73P3+uN5O+f35vv88+P7+/v/u+/f/3b+7r4vv9+zP95n8n/I59XwLz49v++H+L/97/99/38/z+G4/9/+H///w8S//f///C//9//D/I/Y/v4n7/vS+Yf+m/qHfpfN//f//X///f+n//+n79b9G/f+/W7Rf/+//C9/f4A+n9Xv7Pf4//t4+v79/v5//X//X9f98//974vPtfv4Xv4fv8A///+X//+9f+//8/4Of+75v++D7//P9P7833m7+T/P9533mfy///9D///v///D8T//O97HOr///e/D5T7//n/Z//v/P9E+f/8537/H+/u93589//+8f6v/N/73/W+9//99f4Z/v8A/n/ff4Yfv4Xv+w//H5+f96fv+X78Xz/f4//v///D///X///f4///5//f//7/Af///1///8L3Bv9/9b4Z///+v8/5//P/B7f3D/8f/x+fX/f9An5//P+D//8fv//X/x+fn/enfv4///e/X/+f96v3533yv/r//X//3///X///D7b//f/fX8//X7+ff///v/+f/f///T///6//9/8Of/f/9f/f69//X///w+///3+Gv//v/+//+7+ff/C///f///X//f8f977+//6///9/h///57/v9X//X/ev/vf7B/H//9/f///7//f/9///9/+f/f///d///+9///9/B///X///f///Af7//X//979///+v7+//v//O9f+//v/+ff/f///B/P///T/X4A///39/B/P///j+//5/z/ff+f/879ff+//9//D9b/X/w+4B+X/+v8//399f97v7/vff+9f97//f9/+f/9/57///+f//7/9f/v//+//1/f9X/vff+//B///ff///B///T///6///+9//9///r/f/9f/5//f/9f//7+ff/v/f///B/b/D74Xv9/ff/C/b//v/f/ff/X9vff/C/D+fe+fe//B+B/P///T+D//+97B///Af7//X//Af5//r/f///r+/v9//p//D9///r+/ff/8/8fv/v/+ff/B/ff/X/D//+ff///B/C9/9//D//+9b/9///B///D/v/C///X//Afx///7/X/C+X///ff/C/b/59ff+//+H/v/+X/C/A9/B///Af5//r/D/v/A//P/Af7//v+9/H/X/5//f/9f/6/r/59f///f///D/v/9f//+99b//X/8//f/r+//vff///9/8Of8///D7D9/r/Af8///v+/+f9/ff///9/Aft///+vff+/Afv//+ff///B///vff///Af/9/Af9///579ff///D+f/f/v//Af8Of+//8Of///r+//r//A/b9/v/f/f/8Of5+A/v9+//579ff+//C//9//B///9/D+D9/B/57+Of/// Af///f/57B///r/fff/ Af4fv9v/Af///v8///D///T/v+D///D79b/b8 Of8///v/X///69Af/8/Of4//Afs///5// Af4fv+P8ff+//+D+ Of Of8 Of8 Of8 Of8 Of8Of8Of8Of8Of8 Of8 Of8Of Of8 Of8Of8Of Of8 Of8 Of8Of8Of8Of8Of8OfOf8OfOf8Of8OfOf8Of8Of8Of8OfOf8OfOf8Of8OfOf8OfOfOfOfOfOf8OfOf8OfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOfOf
+# --- ESTILO TECH / DARK MODE ---
+st.markdown("""
+    <style>
+    .main { background-color: #0b0e14; color: #e0e0e0; }
+    div[data-testid="stMetric"] {
+        background: rgba(16, 20, 28, 0.8);
+        border: 1px solid #1f2937;
+        padding: 20px;
+        border-radius: 15px;
+    }
+    .tech-header {
+        font-family: 'JetBrains Mono', monospace;
+        color: #00d4ff;
+        border-left: 5px solid #00d4ff;
+        padding-left: 15px;
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- SIDEBAR ---
+with st.sidebar:
+    # Aqui você pode colocar o link da sua imagem se ela estiver hospedada online
+    st.image("https://raw.githubusercontent.com/streamlit/static-assets/main/images/channels/streamlit-mark-color.png", width=80)
+    st.markdown("<h2 style='color:#00d4ff;'>ESCALIFY SYSTEM</h2>", unsafe_allow_html=True)
+    mes_selecionado = st.selectbox("📅 PERÍODO", ["Janeiro", "Fevereiro", "Março", "Abril"], index=2)
+
+def buscar_cards(id_lista):
+    url = f"https://api.trello.com/1/lists/{id_lista}/cards?key={API_KEY}&token={TOKEN}&members=true&fields=name,dateLastActivity"
+    res = requests.get(url)
+    return res.json() if res.status_code == 200 else []
+
+# --- PROCESSAMENTO ---
+data_perf = buscar_cards(LISTA_PERFORMANCE_ID)
+mapa_meses = {"Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4}
+
+if data_perf:
+    entregas = []
+    for card in data_perf:
+        data_card = datetime.strptime(card['dateLastActivity'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        if data_card.month != mapa_meses[mes_selecionado]: continue
+        
+        nome_card = card['name']
+        membros = [m['fullName'].lower() for m in card.get('members', [])]
+        
+        # Identificação de Editores (Radar Suellen Ajustado)
+        editor = "Outros"
+        if any("suel" in m for m in membros) or "suel" in nome_card.lower():
+            editor = "Suellen Santos"
+        elif any("gabriel" in m for m in membros) or "gabriel" in nome_card.lower():
+            editor = "Gabriel Miguel"
+        elif any("heitor" in m for m in membros) or "heitor" in nome_card.lower():
+            editor = "Heitor Leao"
+            
+        if editor != "Outros":
+            # Aqui separamos o que é Performance e o que é Edição Escalify pelo nome do card
+            tipo = "Edição Escalify" if "escalify" in nome_card.lower() else "Performance"
+            
+            match_anuncio = re.search(r'(\d+)\s*[Aa]n[uú]ncio', nome_card)
+            qtd = int(match_anuncio.group(1)) if match_anuncio else 1
+            
+            entregas.append({"Editor": editor, "Qtd": qtd, "Tipo": tipo, "Projeto": nome_card})
+
+    df = pd.DataFrame(entregas)
+
+    if not df.empty:
+        st.markdown(f"<h1 class='tech-header'>DASHBOARD // {mes_selecionado}</h1>", unsafe_allow_html=True)
+        
+        # Filtros de Dados
+        df_perf = df[df['Tipo'] == "Performance"]
+        df_escl = df[df['Tipo'] == "Edição Escalify"]
+
+        # Cards de Métricas
+        c1, c2, c3 = st.columns(3)
+        c1.metric("📦 PERFORMANCE", f"{df_perf['Qtd'].sum()} vids")
+        c2.metric("🎨 EDIDÇÕES ESCALIFY", f"{df_escl['Qtd'].sum()} vids")
+        c3.metric("🚀 TOTAL GERAL", f"{df['Qtd'].sum()} vids")
+
+        st.markdown("---")
+
+        # Gráficos
+        col_l, col_r = st.columns(2)
+        with col_l:
+            st.subheader("📊 Ranking Performance")
+            st.bar_chart(df_perf.groupby('Editor')['Qtd'].sum(), color="#00d4ff", horizontal=True)
+        with col_r:
+            st.subheader("🎬 Ranking Edições")
+            st.bar_chart(df_escl.groupby('Editor')['Qtd'].sum(), color="#ff007f", horizontal=True)
+    else:
+        st.info("Aguardando entrada de dados...")
