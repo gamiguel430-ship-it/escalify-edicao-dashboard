@@ -18,7 +18,7 @@ META_MENSAL = 1000
 
 st.set_page_config(page_title="Escalify Hub", layout="wide", page_icon="⚡")
 
-# --- CSS PREMIUM / CYBERPUNK ---
+# --- CSS PREMIUM / CYBERPUNK (PALETA ESCALIFY) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
@@ -97,7 +97,6 @@ def processar_lista(dados_trello, tipo_trello, lista_final):
         texto = nome.lower()
         membros = [m['fullName'].lower() for m in card.get('members', [])]
         
-        # 1. Identificar Editor
         editor = "Outros"
         if any("suel" in m for m in membros) or "suel" in texto or ".ss" in texto or ".suh" in texto:
             editor = "Suellen Santos"
@@ -107,7 +106,6 @@ def processar_lista(dados_trello, tipo_trello, lista_final):
             editor = "Heitor Leão"
             
         if editor != "Outros":
-            # 2. Lógica de Contagem por Segmento
             qtd = 0
             if tipo_trello == "Serviços/Criativos":
                 match = re.search(r'(\d+)\s*[Aa]n[uú]ncio', nome)
@@ -146,22 +144,22 @@ if not df.empty:
     <div class="mvp-banner">
         <div class="mvp-title">👑 MVP DA AGÊNCIA 👑</div>
         <div class="mvp-name">{resumo_total.idxmax()}</div>
-        <div style="color:white; margin-top:5px; font-family: 'JetBrains Mono', monospace;">Liderando com {int(resumo_total.max())} vídeos entregues!</div>
+        <div style="color:white; margin-top:5px; font-family: 'JetBrains Mono', monospace;">Liderando com {int(resumo_total.max())} criativos entregues!</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- PROGRESS BAR (A META) ---
+    # --- PROGRESS BAR (CORES DA MARCA ESCALIFY) ---
     total_geral = df['Qtd'].sum()
-    progresso_pct = min(int((total_geral / META_MENSAL) * 100), 100) # Limita a 100% no visual
+    progresso_pct = min(int((total_geral / META_MENSAL) * 100), 100)
     
     st.markdown(f"""
     <div style="margin-top: 10px; margin-bottom: 35px; background: rgba(16, 20, 28, 0.5); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05);">
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;">
-            <span style="font-family: 'JetBrains Mono', monospace; color: #ff007f; font-weight: 800; font-size: 18px; letter-spacing: 1px;">🎯 OBJETIVO: {META_MENSAL} VÍDEOS</span>
+            <span style="font-family: 'JetBrains Mono', monospace; color: #ffffff; font-weight: 800; font-size: 18px; letter-spacing: 1px;">🎯 META: {META_MENSAL} CRIATIVOS</span>
             <span style="font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-size: 16px; font-weight: bold;">{total_geral} / {META_MENSAL} ({progresso_pct}%)</span>
         </div>
         <div style="background-color: #1f2937; border-radius: 20px; width: 100%; height: 24px; border: 1px solid #374151; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
-            <div style="background: linear-gradient(90deg, #ff007f 0%, #00d4ff 100%); width: {progresso_pct}%; height: 100%; border-radius: 20px; box-shadow: 0 0 15px rgba(0, 212, 255, 0.6); transition: width 1.5s ease-in-out;"></div>
+            <div style="background: linear-gradient(90deg, #001f3f 0%, #00d4ff 100%); width: {progresso_pct}%; height: 100%; border-radius: 20px; box-shadow: 0 0 15px rgba(0, 212, 255, 0.4); transition: width 1.5s ease-in-out;"></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -171,9 +169,9 @@ if not df.empty:
     df_info = df[df['Segmento'] == "Infoprodutos"]
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("📦 SERVIÇOS/CRIATIVOS", f"{df_serv['Qtd'].sum()} vídeos")
-    c2.metric("🎥 INFOPRODUTOS", f"{df_info['Qtd'].sum()} vídeos")
-    c3.metric("🚀 TOTAL GERAL", f"{total_geral} vídeos")
+    c1.metric("📦 SERVIÇOS/CRIATIVOS", f"{df_serv['Qtd'].sum()} criativos")
+    c2.metric("🎥 INFOPRODUTOS", f"{df_info['Qtd'].sum()} criativos")
+    c3.metric("🚀 TOTAL GERAL", f"{total_geral} criativos")
 
     st.markdown("---")
 
@@ -182,6 +180,7 @@ if not df.empty:
     df_grafico = df.groupby(['Editor', 'Segmento'])['Qtd'].sum().unstack().fillna(0)
     
     if not df_grafico.empty:
+        # Usando a paleta de cores nativa e limpa do Streamlit Dark Theme
         st.bar_chart(df_grafico, horizontal=True)
             
     st.subheader("📋 Log Completo de Operações")
