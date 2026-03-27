@@ -9,8 +9,8 @@ import os
 API_KEY = st.secrets["TRELLO_KEY"]
 TOKEN = st.secrets["TRELLO_TOKEN"]
 
-# IDs DAS LISTAS NO TRELLO (Atualizado com o novo ID!)
-LISTA_PERFORMANCE_ID = '67e4262e8b3b917efd0b6ae1'
+# IDs DAS LISTAS NO TRELLO
+LISTA_SERVICOS_ID = '67e4262e8b3b917efd0b6ae1'
 LISTA_INFOPRODUTOS_ID = '69af2a85b62772bd7d29463e'
 
 st.set_page_config(page_title="Escalify Hub", layout="wide", page_icon="⚡")
@@ -62,6 +62,7 @@ st.markdown("""
 
 # --- SIDEBAR (LOGO) ---
 with st.sidebar:
+    # Mostra a logo se estiver no repositório
     if os.path.exists("logo.jpeg"):
         st.image("logo.jpeg", use_container_width=True)
     elif os.path.exists("image_0.png"):
@@ -78,7 +79,7 @@ def buscar_cards(id_lista):
     return res.json() if res.status_code == 200 else []
 
 # --- PROCESSAMENTO DOS DOIS QUADROS ---
-data_perf = buscar_cards(LISTA_PERFORMANCE_ID)
+data_serv = buscar_cards(LISTA_SERVICOS_ID)
 data_info = buscar_cards(LISTA_INFOPRODUTOS_ID)
 
 mapa_meses = {"Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4}
@@ -106,7 +107,7 @@ def processar_lista(dados_trello, tipo_trello, lista_final):
         if editor != "Outros":
             # 2. Lógica de Contagem por Segmento
             qtd = 0
-            if tipo_trello == "Performance":
+            if tipo_trello == "Serviços/Criativos":
                 match = re.search(r'(\d+)\s*[Aa]n[uú]ncio', nome)
                 qtd = int(match.group(1)) if match else 1
             
@@ -123,7 +124,7 @@ def processar_lista(dados_trello, tipo_trello, lista_final):
             lista_final.append({"Editor": editor, "Qtd": qtd, "Segmento": tipo_trello, "Projeto": nome})
 
 # Executa o motor para as duas listas
-if data_perf: processar_lista(data_perf, "Performance", registos)
+if data_serv: processar_lista(data_serv, "Serviços/Criativos", registos)
 if data_info: processar_lista(data_info, "Infoprodutos", registos)
 
 df = pd.DataFrame(registos)
@@ -131,35 +132,35 @@ df = pd.DataFrame(registos)
 if not df.empty:
     st.markdown(f"<h1 class='tech-header'>PERFORMANCE HUB // {mes_selecionado}</h1>", unsafe_allow_html=True)
     
-    # --- BANNER DO MVP GERAL ---
+    # --- BANNER DO MVP GERAL (SOMA TUDO) ---
     resumo_total = df.groupby('Editor')['Qtd'].sum()
     st.markdown(f"""
     <div class="mvp-banner">
         <div class="mvp-title">👑 MVP DA AGÊNCIA 👑</div>
         <div class="mvp-name">{resumo_total.idxmax()}</div>
-        <div style="color:white; margin-top:5px; font-family: 'JetBrains Mono', monospace;">Total de {resumo_total.max()} edições no mês!</div>
+        <div style="color:white; margin-top:5px; font-family: 'JetBrains Mono', monospace;">Entregou incríveis {int(resumo_total.max())} vídeos no total!</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- MÉTRICAS GERAIS ---
-    df_perf = df[df['Segmento'] == "Performance"]
+    # Separa os dados para os cards
+    df_serv = df[df['Segmento'] == "Serviços/Criativos"]
     df_info = df[df['Segmento'] == "Infoprodutos"]
 
+    # --- MÉTRICAS GERAIS ---
     c1, c2, c3 = st.columns(3)
-    c1.metric("📦 PERFORMANCE", f"{df_perf['Qtd'].sum()} vids")
-    c2.metric("🎥 INFOPRODUTOS", f"{df_info['Qtd'].sum()} vids")
-    c3.metric("🚀 TOTAL GERAL", f"{df['Qtd'].sum()} vids")
+    c1.metric("📦 SERVIÇOS/CRIATIVOS", f"{df_serv['Qtd'].sum()} vídeos")
+    c2.metric("🎥 INFOPRODUTOS", f"{df_info['Qtd'].sum()} vídeos")
+    c3.metric("🚀 TOTAL GERAL", f"{df['Qtd'].sum()} vídeos")
 
     st.markdown("---")
 
-    # --- GRÁFICO EMPILHADO (A MÁGICA VISUAL) ---
+    # --- GRÁFICO EMPILHADO ---
     st.subheader("📊 Ranking Geral Segmentado")
     
-    # Agrupa os dados para que o Streamlit crie barras com duas cores
+    # Agrupa os dados para que o Streamlit crie barras com as duas cores
     df_grafico = df.groupby(['Editor', 'Segmento'])['Qtd'].sum().unstack().fillna(0)
     
     if not df_grafico.empty:
-        # A cor de Performance será azul, a de Infoprodutos será um tom diferente (o Streamlit ajusta a paleta)
         st.bar_chart(df_grafico, horizontal=True)
             
     st.subheader("📋 Log Completo de Operações")
